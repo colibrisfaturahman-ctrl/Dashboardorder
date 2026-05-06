@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Order Parfum</title>
+    <!-- Tailwind CSS & Font Awesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(226, 232, 240, 0.8); }
+        .order-done { background-color: #f0fdf4 !important; opacity: 0.7; }
+        .order-done .text-content { text-decoration: line-through; }
+        .spinner { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-5xl mx-auto">
+        <!-- Header -->
+        <header class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800 flex items-center gap-3">
+                    <span class="text-blue-600"><i class="fas fa-box-open"></i></span>
+                    Order Parfum 📦
+                </h1>
+                <p class="text-slate-500 mt-1">Kelola pesanan dan sinkronisasi ke Google Sheets</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="exportData()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl hover:bg-slate-50 transition flex items-center gap-2 text-sm font-medium shadow-sm">
+                    <i class="fas fa-download"></i> Backup
+                </button>
+                <button onclick="document.getElementById('fileImport').click()" class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl hover:bg-slate-50 transition flex items-center gap-2 text-sm font-medium shadow-sm">
+                    <i class="fas fa-upload"></i> Import
+                </button>
+                <input type="file" id="fileImport" class="hidden" onchange="importData(event)">
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Form Input -->
+            <div class="lg:col-span-1">
+                <div class="glass-card p-6 rounded-2xl shadow-sm sticky top-8">
+                    <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-plus-circle text-blue-500"></i> Pesanan Baru
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nama Pembeli</label>
+                            <input type="text" id="nama" placeholder="Budi Santoso" class="w-full px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nomor WA</label>
+                            <input type="text" id="wa" placeholder="0812xxxx" class="w-full px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Produk</label>
+                            <input type="text" id="produk" placeholder="Parfum Blue 50ml" class="w-full px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Tanggal</label>
+                                <input type="date" id="tgl" class="w-full px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Kurir</label>
+                                <select id="ekspedisi" class="w-full px-4 py-2 rounded-xl border border-slate-200 bg-white outline-none">
+                                    <option value="jne">JNE</option>
+                                    <option value="jnt">J&T</option>
+                                    <option value="sicepat">SiCepat</option>
+                                    <option value="shopee">Shopee</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nomor Resi</label>
+                            <input type="text" id="resi" placeholder="Masukkan resi..." class="w-full px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <button id="btnSimpan" onclick="tambahOrder()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow-lg flex items-center justify-center gap-2">
+                            <i class="fas fa-paper-plane"></i> Simpan & Kirim
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabel Data -->
+            <div class="lg:col-span-2">
+                <div class="glass-card rounded-2xl shadow-sm overflow-hidden">
+                    <div class="px-6 py-4 border-b flex justify-between items-center bg-white">
+                        <h2 class="font-bold text-slate-800">Daftar Pengiriman</h2>
+                        <span id="badgeCount" class="bg-blue-100 text-blue-600 text-xs font-bold px-3 py-1 rounded-full">0 Order</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left" id="tabelOrder">
+                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
+                                <tr>
+                                    <th class="px-6 py-4">Pembeli</th>
+                                    <th class="px-6 py-4">Produk</th>
+                                    <th class="px-6 py-4">Resi</th>
+                                    <th class="px-6 py-4 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                    <div id="emptyState" class="p-12 text-center hidden text-slate-400">
+                        <i class="fas fa-folder-open text-4xl mb-2"></i><p>Belum ada data</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- UI Notifikasi -->
+    <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 translate-y-20 opacity-0 bg-slate-800 text-white px-6 py-3 rounded-2xl transition-all duration-300 z-50 flex items-center gap-3">
+        <i id="toastIcon" class="fas fa-check-circle text-green-400"></i>
+        <span id="toastMsg" class="text-sm font-medium">Berhasil</span>
+    </div>
+
+    <script>
+        // MASUKKAN URL GOOGLE SCRIPT KAMU DI SINI
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwoQ9WTWoTbEuc8wK20_j6PIHFBM9xxy993waOeF0uc2txCMzROywWgvtMkehdFYwuEHA/exec';
+
+        const linkEkspedisi = {
+            jne: r => `https://cekresi.com/?noresi=${r}`,
+            jnt: r => `https://jet.co.id/track?awb=${r}`,
+            sicepat: r => `https://sicepat.com/checkAwb?awb=${r}`,
+            shopee: r => `https://spx.co.id/track?waybill=${r}`
+        };
+
+        let dataOrder = JSON.parse(localStorage.getItem('dataParfum') || '[]');
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            document.getElementById('toastIcon').className = isError ? 'fas fa-exclamation-circle text-red-400' : 'fas fa-check-circle text-green-400';
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        }
+
+        function renderTabel() {
+            const tbody = document.querySelector('#tabelOrder tbody');
+            const emptyState = document.getElementById('emptyState');
+            tbody.innerHTML = '';
+            document.getElementById('badgeCount').innerText = `${dataOrder.length} Order`;
+
+            if (dataOrder.length === 0) emptyState.classList.remove('hidden');
+            else {
+                emptyState.classList.add('hidden');
+                dataOrder.forEach((o, i) => {
+                    const rowClass = o.selesai ? 'order-done' : '';
+                    tbody.innerHTML += `
+                        <tr class="${rowClass} hover:bg-slate-50 transition-colors">
+                            <td class="px-6 py-4">
+                                <div class="font-bold text-slate-800 text-content">${o.nama}</div>
+                                <div class="text-xs text-blue-500">${o.wa}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-content">${o.produk}</div>
+                                <div class="text-[10px] text-slate-400 font-bold">${o.tgl}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-xs font-bold uppercase text-slate-600">${o.ekspedisi}</div>
+                                <div class="text-xs text-slate-500 font-mono">${o.resi}</div>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="flex justify-end gap-2">
+                                    <a href="${linkEkspedisi[o.ekspedisi](o.resi)}" target="_blank" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Cek Resi"><i class="fas fa-truck-fast"></i></a>
+                                    <button onclick="toggleSelesai(${i})" class="p-2 text-green-600 hover:bg-green-50 rounded-lg" title="Selesai"><i class="fas fa-check-double"></i></button>
+                                    <button onclick="hapusOrder(${i})" class="p-2 text-red-400 hover:bg-red-50 rounded-lg" title="Hapus"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </td>
+                        </tr>`;
+                });
+            }
+            localStorage.setItem('dataParfum', JSON.stringify(dataOrder));
+        }
+
+        async function tambahOrder() {
+            const btn = document.getElementById('btnSimpan');
+            const order = {
+                nama: document.getElementById('nama').value,
+                wa: document.getElementById('wa').value,
+                produk: document.getElementById('produk').value,
+                tgl: document.getElementById('tgl').value,
+                ekspedisi: document.getElementById('ekspedisi').value,
+                resi: document.getElementById('resi').value,
+                selesai: false
+            };
+
+            if (!order.resi || !order.nama) return showToast('Isi Nama & Resi bro!', true);
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fas fa-circle-notch spinner"></i> Mengirim...`;
+
+            try {
+                // Mencoba mengirim ke Google Sheets
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(order)
+                });
+                dataOrder.unshift(order);
+                renderTabel();
+                showToast('Berhasil Simpan & Kirim!');
+                ['nama', 'wa', 'produk', 'resi'].forEach(id => document.getElementById(id).value = '');
+            } catch (error) {
+                // Tetap simpan di browser jika internet/sheets bermasalah
+                dataOrder.unshift(order);
+                renderTabel();
+                showToast('Hanya simpan di browser (Gagal Sheets)', true);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fas fa-paper-plane"></i> Simpan & Kirim`;
+            }
+        }
+
+        function toggleSelesai(i) { dataOrder[i].selesai = !dataOrder[i].selesai; renderTabel(); }
+        function hapusOrder(i) { if(confirm('Hapus data ini?')) { dataOrder.splice(i, 1); renderTabel(); } }
+        function exportData() {
+            const blob = new Blob([JSON.stringify(dataOrder, null, 2)], {type: 'application/json'});
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'backup-order.json'; a.click();
+        }
+        function importData(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => { 
+                try {
+                    dataOrder = JSON.parse(reader.result); 
+                    renderTabel(); 
+                    showToast('Impor Berhasil!'); 
+                } catch(e) {
+                    showToast('File tidak valid!', true);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        document.getElementById('tgl').valueAsDate = new Date();
+        renderTabel();
+    </script>
+</body>
+</html>
